@@ -1,11 +1,11 @@
 let w = (c.width = window.innerWidth),
   h = (c.height = window.innerHeight),
   ctx = c.getContext("2d"),
-  hw = w / 2;
-(hh = h / 2),
-  (opts = {
-    // change the text in here //
-    strings: ["HAPPY", "BIRTHDAY!", "to You"],
+  hw = w / 2,
+  hh = h / 2,
+  opts = {
+    // thêm "I LOVE YOU"
+    strings: ["HAPPY", "BIRTHDAY!", "LƯU MỸ", "I LOVE YOU"],
     charSize: 30,
     charSpacing: 35,
     lineHeight: 40,
@@ -44,34 +44,40 @@ let w = (c.width = window.innerWidth),
     balloonAddedVel: 0.4,
     balloonBaseRadian: -(Math.PI / 2 - 0.5),
     balloonAddedRadian: -1,
-  }),
-  (calc = {
+  },
+  calc = {
     totalWidth:
       opts.charSpacing *
       Math.max(opts.strings[0].length, opts.strings[1].length),
-  }),
-  (Tau = Math.PI * 2),
-  (TauQuarter = Tau / 4),
-  (letters = []);
+  },
+  Tau = Math.PI * 2,
+  TauQuarter = Tau / 4,
+  letters = [];
 
 ctx.font = opts.charSize + "px Verdana";
 
-function Letter(char, x, y) {
+function Letter(char, x, y, isLoveLine = false) {
   this.char = char;
   this.x = x;
   this.y = y;
+  this.isLoveLine = isLoveLine;
 
   this.dx = -ctx.measureText(char).width / 2;
   this.dy = +opts.charSize / 2;
-
   this.fireworkDy = this.y - hh;
 
-  var hue = (x / calc.totalWidth) * 360;
-
-  this.color = "hsl(hue,80%,50%)".replace("hue", hue);
-  this.lightAlphaColor = "hsla(hue,80%,light%,alp)".replace("hue", hue);
-  this.lightColor = "hsl(hue,80%,light%)".replace("hue", hue);
-  this.alphaColor = "hsla(hue,80%,50%,alp)".replace("hue", hue);
+  if (isLoveLine) {
+    this.color = "hsl(350, 100%, 50%)"; // đỏ hồng
+    this.lightColor = "hsl(350, 100%, 70%)";
+    this.alphaColor = "hsla(350, 100%, 50%, alp)";
+    this.lightAlphaColor = "hsla(350, 100%, light%, alp)";
+  } else {
+    var hue = (x / calc.totalWidth) * 360;
+    this.color = "hsl(" + hue + ",80%,50%)";
+    this.lightColor = "hsl(" + hue + ",80%,light%)";
+    this.alphaColor = "hsla(" + hue + ",80%,50%,alp)";
+    this.lightAlphaColor = "hsla(" + hue + ",80%,light%,alp)";
+  }
 
   this.reset();
 }
@@ -260,7 +266,11 @@ Letter.prototype.step = function () {
 
       ctx.fillStyle = this.alphaColor.replace("alp", proportion);
       ctx.beginPath();
-      generateBalloonPath(x, y, this.size * proportion);
+      if (this.isLoveLine) {
+        generateHeartPath(x, y, this.size * proportion);
+      } else {
+        generateBalloonPath(x, y, this.size * proportion);
+      }
       ctx.fill();
 
       ctx.beginPath();
@@ -268,8 +278,14 @@ Letter.prototype.step = function () {
       ctx.lineTo(x, this.y);
       ctx.stroke();
 
+      // chữ glow cho I LOVE YOU
+      if (this.isLoveLine) {
+        ctx.shadowBlur = 20;
+        ctx.shadowColor = "pink";
+      }
       ctx.fillStyle = this.lightColor.replace("light", 70);
       ctx.fillText(this.char, this.x + this.dx, this.y + this.dy);
+      ctx.shadowBlur = 0;
 
       if (this.tick >= this.inflateTime) {
         this.tick = 0;
@@ -281,7 +297,11 @@ Letter.prototype.step = function () {
 
       ctx.fillStyle = this.color;
       ctx.beginPath();
-      generateBalloonPath(this.cx, this.cy, this.size);
+      if (this.isLoveLine) {
+        generateHeartPath(this.cx, this.cy, this.size);
+      } else {
+        generateBalloonPath(this.cx, this.cy, this.size);
+      }
       ctx.fill();
 
       ctx.beginPath();
@@ -289,14 +309,20 @@ Letter.prototype.step = function () {
       ctx.lineTo(this.cx, this.cy + this.size);
       ctx.stroke();
 
+      if (this.isLoveLine) {
+        ctx.shadowBlur = 20;
+        ctx.shadowColor = "pink";
+      }
       ctx.fillStyle = this.lightColor.replace("light", 70);
       ctx.fillText(this.char, this.cx + this.dx, this.cy + this.dy + this.size);
+      ctx.shadowBlur = 0;
 
       if (this.cy + this.size < -hh || this.cx < -hw || this.cy > hw)
         this.phase = "done";
     }
   }
 };
+
 function Shard(x, y, vx, vy, color) {
   var vel =
     opts.fireworkShardBaseVel + opts.fireworkShardAddedVel * Math.random();
@@ -340,6 +366,7 @@ Shard.prototype.step = function () {
 
   if (this.prevPoints[0][1] > hh) this.alive = false;
 };
+
 function generateBalloonPath(x, y, size) {
   ctx.moveTo(x, y);
   ctx.bezierCurveTo(
@@ -351,6 +378,20 @@ function generateBalloonPath(x, y, size) {
     y - size
   );
   ctx.bezierCurveTo(x + size / 4, y - size, x + size / 2, y - size / 2, x, y);
+}
+
+// trái tim ❤️
+function generateHeartPath(x, y, size) {
+  ctx.moveTo(x, y);
+  ctx.bezierCurveTo(
+    x - size / 2,
+    y - size / 2,
+    x - size,
+    y + size / 3,
+    x,
+    y + size
+  );
+  ctx.bezierCurveTo(x + size, y + size / 3, x + size / 2, y - size / 2, x, y);
 }
 
 function anim() {
@@ -372,8 +413,10 @@ function anim() {
   if (done) for (var l = 0; l < letters.length; ++l) letters[l].reset();
 }
 
+// tạo chữ
 for (let i = 0; i < opts.strings.length; ++i) {
   for (var j = 0; j < opts.strings[i].length; ++j) {
+    let isLoveLine = opts.strings[i] === "I LOVE YOU";
     letters.push(
       new Letter(
         opts.strings[i][j],
@@ -382,7 +425,8 @@ for (let i = 0; i < opts.strings.length; ++i) {
           (opts.strings[i].length * opts.charSize) / 2,
         i * opts.lineHeight +
           opts.lineHeight / 2 -
-          (opts.strings.length * opts.lineHeight) / 2
+          (opts.strings.length * opts.lineHeight) / 2,
+        isLoveLine
       )
     );
   }
